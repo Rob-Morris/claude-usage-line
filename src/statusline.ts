@@ -1,0 +1,150 @@
+import { GREEN, RED, YELLOW, BLUE, MAGENTA, CYAN, RST, dim } from './ansi.js';
+import { renderBar } from './bar.js';
+import { readCache, isCacheStale } from './cache.js';
+import { formatRemaining } from './time.js';
+import { spawnBackgroundFetch } from './usage-api.js';
+import { getGitBranch } from './git.js';
+import { homedir } from 'os';
+import { sep as pathSep } from 'path';
+import type { StatuslineInput, BarStyle, CachedUsage, JSONOutput, HiddenField } from './types.js';
+
+interface ResolvedUsage {
+  sesPct: number;
+  fhPct: number;
+  wkPct: number;
+  fhRemain: string;
+  wkRemain: string;
+  cached: CachedUsage | null;
+}
+
+function resolveUsage(input: StatuslineInput): ResolvedUsage {
+  const cached = readCache();
+  if (isCacheStale(cached)) {
+    spawnBackgroundFetch();
+  }
+
+  return {
+    sesPct: Math.floor(input.context_window.used_percentage ?? 0),
+    fhPct: Math.floor(cached?.five_hour?.utilization ?? 0),
+    wkPct: Math.floor(cached?.seven_day?.utilization ?? 0),
+    fhRemain: formatRemaining(cached?.five_hour?.resets_at),
+    wkRemain: formatRemaining(cached?.seven_day?.resets_at),
+    cached,
+  };
+}
+
+function shortenCwd(cwd: string): string {
+  const home = homedir();
+  if (cwd === home) return '~';
+  if (cwd.startsWith(home + pathSep)) return '~' + cwd.slice(home.length).replaceAll('\\', '/');
+  return cwd;
+}
+
+function formatDuration(ms: number): string {
+  const totalMin = Math.floor(ms / 60_000);
+  if (totalMin === 0) return ms > 0 ? '<1m' : '0m';
+  if (totalMin < 60) return totalMin + 'm';
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h}h${m}m` : `${h}h`;
+}
+
+function hasExtendedInput(input: StatuslineInput): boolean {
+  return !!(input.cwd || input.model);
+}
+
+function renderBarsLine(input: StatuslineInput, style: BarStyle, usage: ResolvedUsage, hide: Set<HiddenField>): string {
+  const { sesPct, fhPct, wkPct, fhRemain, wkRemain } = usage;
+  const sep = ' ' + dim(style.separator) + ' ';
+
+  const parts: string[] = [
+    'Session ' + renderBar(sesPct, MAGENTA, style),
+    '5h ' + renderBar(fhPct, CYAN, style) + ' ' + dim(style.resetIcon + fhRemain),
+    '7d ' + renderBar(wkPct, GREEN, style) + ' ' + dim(style.resetIcon + wkRemain),
+  ];
+
+  if (input.cost) {
+    const { total_lines_added, total_lines_removed, total_cost_usd, total_duration_ms } = input.cost;
+    if (!hide.has('diff') && (typeof total_lines_added === 'number' || typeof total_lines_removed === 'number')) {
+      const added = total_lines_added ?? 0;
+      const removed = total_lines_removed ?? 0;
+      parts.push(GREEN + '+' + added + RST + ' ' + RED + '-' + removed + RST);
+    }
+    if (!hide.has('cost') && typeof total_cost_usd === 'number') {
+      parts.push(YELLOW + '$' + total_cost_usd.toFixed(2) + RST);
+    }
+    if (!hide.has('duration') && typeof total_duration_ms === 'number' && total_duration_ms > 0) {
+      parts.push(dim(formatDuration(total_duration_ms)));
+    }
+  }
+
+  return parts.join(sep);
+}
+
+export function renderStatusline(input: StatuslineInput, style: BarStyle, hide: Set<HiddenField> = new Set()): string {
+  const usage = resolveUsage(input);
+
+  if (!hasExtendedInput(input)) {
+    return renderBarsLine(input, style, usage, hide);
+  }
+
+  const sep = ' ' + dim(style.separator) + ' ';
+  const showCwd = !hide.has('cwd') && !!input.cwd;
+  const showBranch = !hide.has('branch') && !!input.cwd;
+  const branch = showBranch ? getGitBranch(input.cwd!) : null;
+
+  const line1Parts: string[] = [];
+  if (showCwd) {
+    let cwdPart = BLUE + shortenCwd(input.cwd!) + RST;
+    if (branch) cwdPart += '  ' + GREEN + branch + RST;
+    line1Parts.push(cwdPart);
+  } else if (branch) {
+    line1Parts.push(GREEN + branch + RST);
+  }
+
+  const line2Parts: string[] = [];
+  if (!hide.has('model') && input.model?.display_name) {
+    line2Parts.push(MAGENTA + input.model.display_name + RST);
+  }
+  line2Parts.push(renderBarsLine(input, style, usage, hide));
+
+  if (line1Parts.length === 0) {
+    return line2Parts.join(sep);
+  }
+
+  return line1Parts.join(sep) + '\n' + line2Parts.join(sep);
+}
+
+export function buildJSONOutput(input: StatuslineInput, hide: Set<HiddenField> = new Set()): JSONOutput {
+  const { sesPct, fhPct, wkPct, fhRemain, wkRemain, cached } = resolveUsage(input);
+  const branch = !hide.has('branch') && input.cwd ? getGitBranch(input.cwd) : null;
+
+  return {
+    model: !hide.has('model') ? (input.model?.display_name ?? null) : null,
+    cwd: !hide.has('cwd') ? (input.cwd ?? null) : null,
+    git_branch: branch,
+    session: {
+      utilization_pct: sesPct,
+      resets_at: null,
+      remaining: '--',
+    },
+    five_hour: {
+      utilization_pct: fhPct,
+      resets_at: cached?.five_hour?.resets_at ?? null,
+      remaining: fhRemain,
+    },
+    seven_day: {
+      utilization_pct: wkPct,
+      resets_at: cached?.seven_day?.resets_at ?? null,
+      remaining: wkRemain,
+    },
+    diff: {
+      added: !hide.has('diff') ? (input.cost?.total_lines_added ?? 0) : 0,
+      removed: !hide.has('diff') ? (input.cost?.total_lines_removed ?? 0) : 0,
+    },
+    cost_usd: !hide.has('cost') ? (input.cost?.total_cost_usd ?? null) : null,
+    duration_min: !hide.has('duration') && typeof input.cost?.total_duration_ms === 'number'
+      ? Math.floor(input.cost.total_duration_ms / 60_000)
+      : null,
+  };
+}

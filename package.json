@@ -1,0 +1,44 @@
+{
+  "name": "claude-usage-line",
+  "version": "1.0.0",
+  "description": "Cross-platform Claude Code statusline showing session, 5h, and 7d rate limits",
+  "author": "Engin Açıkgöz",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/canack/claude-usage-line.git"
+  },
+  "homepage": "https://github.com/canack/claude-usage-line#readme",
+  "bugs": {
+    "url": "https://github.com/canack/claude-usage-line/issues"
+  },
+  "type": "commonjs",
+  "bin": {
+    "claude-usage-line": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "statusline",
+    "rate-limit",
+    "anthropic",
+    "cli",
+    "terminal"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0"
+  }
+}
