@@ -1,6 +1,6 @@
 {
   "name": "claude-usage-line",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Cross-platform Claude Code statusline showing session, 5h, and 7d rate limits",
   "author": "Engin Açıkgöz",
   "license": "MIT",

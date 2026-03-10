@@ -58,10 +58,16 @@ function parseHide(raw: string): Set<HiddenField> {
   return result;
 }
 
-function parseFlags(args: string[]): { json: boolean; styleName: string; hide: Set<HiddenField> } {
+const SEPARATORS: Record<string, string> = {
+  pipe: '│',
+  bullet: '•',
+};
+
+function parseFlags(args: string[]): { json: boolean; styleName: string; hide: Set<HiddenField>; sep: string | null } {
   let json = false;
   let styleName = DEFAULT_STYLE;
   let hide = new Set<HiddenField>();
+  let sep: string | null = null;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--json') {
@@ -74,9 +80,13 @@ function parseFlags(args: string[]): { json: boolean; styleName: string; hide: S
       hide = parseHide(args[++i]);
     } else if (arg.startsWith('--hide=')) {
       hide = parseHide(arg.slice('--hide='.length));
+    } else if (arg === '--sep' && i + 1 < args.length) {
+      sep = args[++i];
+    } else if (arg.startsWith('--sep=')) {
+      sep = arg.slice('--sep='.length);
     }
   }
-  return { json, styleName, hide };
+  return { json, styleName, hide, sep };
 }
 
 async function readStdin(): Promise<string> {
@@ -108,6 +118,7 @@ async function main(): Promise<void> {
       'Options:\n' +
       '  --style <name>  Bar style (classic, dot, braille, block, ascii, square, pipe)\n' +
       '  --hide <fields> Hide fields: cost,diff,duration,model,cwd,branch\n' +
+      '  --sep <name>    Separator style: bullet (default), pipe\n' +
       '  --json          Output JSON\n' +
       '  --help          Show this help\n' +
       '  --version       Show version\n'
@@ -125,7 +136,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const { json, styleName, hide } = parseFlags(args);
+  const { json, styleName, hide, sep } = parseFlags(args);
 
   if (!json) {
     const style = getStyle(styleName);
@@ -150,7 +161,12 @@ async function main(): Promise<void> {
   if (json) {
     process.stdout.write(JSON.stringify(buildJSONOutput(input, hide)) + '\n');
   } else {
-    process.stdout.write(renderStatusline(input, getStyle(styleName)!, hide) + '\n');
+    let style = getStyle(styleName)!;
+    if (sep) {
+      const resolved = SEPARATORS[sep] ?? sep;
+      style = { ...style, separator: resolved };
+    }
+    process.stdout.write(renderStatusline(input, style, hide) + '\n');
   }
 }
 
