@@ -1,11 +1,37 @@
-import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'fs';
-import { dirname } from 'path';
-import { getSettingsPath } from './platform.js';
+import { readFileSync, mkdirSync, existsSync } from 'fs';
+import { dirname, join } from 'path';
+import { getSettingsPath, getThemePath, atomicWrite } from './platform.js';
+import { isValidThemeName } from './theme.js';
 
-export function runSetup(): void {
+function parseSetupFlags(args: string[]): { themeName: string | null; force: boolean } {
+  let themeName: string | null = null;
+  let force = false;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--force') {
+      force = true;
+    } else if (arg === '--theme' && i + 1 < args.length) {
+      themeName = args[++i];
+    } else if (arg.startsWith('--theme=')) {
+      themeName = arg.slice('--theme='.length);
+    }
+  }
+  return { themeName, force };
+}
+
+export function runSetup(args: string[] = []): void {
+  const { themeName, force } = parseSetupFlags(args);
+
+  if (themeName && !isValidThemeName(themeName)) {
+    process.stderr.write('Invalid theme name: ' + themeName + '\n');
+    process.exit(1);
+  }
+
   const settingsPath = getSettingsPath();
-  const dir = dirname(settingsPath);
-  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  mkdirSync(dirname(settingsPath), { recursive: true, mode: 0o700 });
+
+  let desired = 'npx claude-usage-line';
+  if (themeName) desired += ' --theme ' + themeName;
 
   let settings: Record<string, unknown> = {};
   try {
@@ -19,24 +45,46 @@ export function runSetup(): void {
 
   const statusLine = settings.statusLine as Record<string, unknown> | undefined;
   const existing = statusLine?.command;
-  const desired = 'npx claude-usage-line';
 
   if (existing === desired) {
     process.stdout.write('Already configured in ' + settingsPath + '\n');
-    return;
-  }
-
-  if (typeof existing === 'string' && existing.length > 0) {
+  } else if (typeof existing === 'string' && existing.length > 0 && !force) {
     process.stdout.write(
       'Existing statusLine.command: ' + existing + '\n' +
-      'Replacing with: ' + desired + '\n'
+      'Would replace with: ' + desired + '\n' +
+      'Use --force to overwrite.\n'
     );
+    return;
+  } else {
+    if (typeof existing === 'string' && existing.length > 0) {
+      process.stdout.write(
+        'Replacing statusLine.command: ' + existing + '\n' +
+        'With: ' + desired + '\n'
+      );
+    }
+    settings.statusLine = { type: 'command', command: desired };
+    atomicWrite(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+    process.stdout.write('Configured statusLine in ' + settingsPath + '\n');
   }
 
-  settings.statusLine = { type: 'command', command: desired };
-  const content = JSON.stringify(settings, null, 2) + '\n';
-  const tmp = settingsPath + '.tmp';
-  writeFileSync(tmp, content, { encoding: 'utf-8', mode: 0o600 });
-  renameSync(tmp, settingsPath);
-  process.stdout.write('Configured statusLine in ' + settingsPath + '\n');
+  const themePath = getThemePath();
+  const themeSourceName = themeName || 'default';
+  const themeSourcePath = join(__dirname, '..', 'themes', themeSourceName + '.json');
+
+  const themeExists = existsSync(themePath);
+  if (themeExists && !force) {
+    process.stdout.write('Theme file already exists at ' + themePath + '\n');
+  } else {
+    try {
+      const themeContent = readFileSync(themeSourcePath, 'utf-8');
+      atomicWrite(themePath, themeContent);
+      process.stdout.write((themeExists ? 'Overwrote' : 'Created') + ' theme file at ' + themePath + '\n');
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
+        process.stderr.write('Warning: theme file not found: ' + themeSourcePath + '\n');
+        return;
+      }
+      process.stderr.write('Warning: could not create theme file: ' + (e as Error).message + '\n');
+    }
+  }
 }

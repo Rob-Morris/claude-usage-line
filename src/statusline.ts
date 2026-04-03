@@ -1,4 +1,4 @@
-import { GREEN, RED, YELLOW, BLUE, MAGENTA, CYAN, DIM, RST, dim } from './ansi.js';
+import { DIFF_ADD_COLOR, DIFF_REMOVE_COLOR, COST_COLOR, CWD_COLOR, MODEL_COLOR, DIM, RST, CONTEXT_COLOR, FIVE_HOUR_COLOR, SEVEN_DAY_COLOR, FIVE_HOUR_RESET_COLOR, SEVEN_DAY_RESET_COLOR, DURATION_COLOR, BRANCH_COLOR, colorByThreshold, dim } from './ansi.js';
 import { renderBar } from './bar.js';
 import { readCache, isCacheStale } from './cache.js';
 import { formatRemaining } from './time.js';
@@ -65,13 +65,13 @@ function buildExtras(input: StatuslineInput, hide: Set<HiddenField>, sep: string
     if (!hide.has('diff') && (typeof total_lines_added === 'number' || typeof total_lines_removed === 'number')) {
       const added = total_lines_added ?? 0;
       const removed = total_lines_removed ?? 0;
-      parts.push(GREEN + '+' + added + RST + ' ' + RED + '-' + removed + RST);
+      parts.push(DIFF_ADD_COLOR() + '+' + added + RST + ' ' + DIFF_REMOVE_COLOR() + '-' + removed + RST);
     }
     if (!hide.has('cost') && typeof total_cost_usd === 'number') {
-      parts.push(YELLOW + '$' + total_cost_usd.toFixed(2) + RST);
+      parts.push(COST_COLOR() + '$' + total_cost_usd.toFixed(2) + RST);
     }
     if (!hide.has('duration') && typeof total_duration_ms === 'number' && total_duration_ms > 0) {
-      parts.push(DIM + BLUE + '⏱ ' + formatDuration(total_duration_ms) + RST);
+      parts.push(DIM() + DURATION_COLOR() + '⏱ ' + formatDuration(total_duration_ms) + RST);
     }
   }
   return parts;
@@ -80,9 +80,9 @@ function buildExtras(input: StatuslineInput, hide: Set<HiddenField>, sep: string
 function buildBarParts(style: BarStyle, usage: ResolvedUsage): string[] {
   const { sesPct, fhPct, wkPct, fhRemain, wkRemain } = usage;
   return [
-    'Cx ' + renderBar(sesPct, MAGENTA, style),
-    '5h ' + renderBar(fhPct, CYAN, style) + ' ' + DIM + CYAN + style.resetIcon + fhRemain + RST,
-    '7d ' + renderBar(wkPct, GREEN, style) + ' ' + DIM + GREEN + style.resetIcon + wkRemain + RST,
+    'Cx ' + renderBar(sesPct, CONTEXT_COLOR(), style),
+    '5h ' + renderBar(fhPct, FIVE_HOUR_COLOR(), style) + ' ' + DIM() + (FIVE_HOUR_RESET_COLOR() || colorByThreshold(fhPct, FIVE_HOUR_COLOR())) + style.resetIcon + fhRemain + RST,
+    '7d ' + renderBar(wkPct, SEVEN_DAY_COLOR(), style) + ' ' + DIM() + (SEVEN_DAY_RESET_COLOR() || colorByThreshold(wkPct, SEVEN_DAY_COLOR())) + style.resetIcon + wkRemain + RST,
   ];
 }
 
@@ -110,18 +110,18 @@ export function renderStatusline(input: StatuslineInput, style: BarStyle, hide: 
   // Line 1: cwd/branch + extras
   const line1Parts: string[] = [];
   if (showCwd) {
-    let cwdPart = BLUE + shortenCwd(input.cwd!) + RST;
-    if (branch) cwdPart += ' → ' + GREEN + branch + RST;
+    let cwdPart = CWD_COLOR() + shortenCwd(input.cwd!) + RST;
+    if (branch) cwdPart += ' → ' + BRANCH_COLOR() + branch + RST;
     line1Parts.push(cwdPart);
   } else if (branch) {
-    line1Parts.push(GREEN + branch + RST);
+    line1Parts.push(BRANCH_COLOR() + branch + RST);
   }
   line1Parts.push(...buildExtras(input, hide, sep));
 
   // Line 2: model + bars
   const line2Parts: string[] = [];
   if (!hide.has('model') && input.model?.display_name) {
-    line2Parts.push(MAGENTA + input.model.display_name + RST);
+    line2Parts.push(MODEL_COLOR() + input.model.display_name + RST);
   }
   line2Parts.push(...buildBarParts(style, usage));
 

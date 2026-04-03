@@ -2,12 +2,13 @@
 
 process.stdout.on('error', (e: NodeJS.ErrnoException) => { if (e.code === 'EPIPE') process.exit(0); throw e; });
 
+import { existsSync } from 'fs';
 import { renderStatusline, buildJSONOutput } from './statusline.js';
 import { runSetup } from './setup.js';
 import { getStyle, styleNames, DEFAULT_STYLE } from './styles.js';
+import { setBaseTheme, getBaseThemePath, isValidThemeName, applyThemeToStyle, themeHideFields } from './theme.js';
+import { VALID_HIDE_FIELDS } from './types.js';
 import type { StatuslineInput, HiddenField } from './types.js';
-
-const VALID_HIDE_FIELDS = new Set<HiddenField>(['cost', 'diff', 'duration', 'model', 'cwd', 'branch']);
 
 const STDIN_TIMEOUT = 3000;
 const MAX_STDIN = 64 * 1024;
@@ -59,13 +60,28 @@ function parseHide(raw: string): Set<HiddenField> {
 }
 
 const SEPARATORS: Record<string, string> = {
-  pipe: '│',
   bullet: '•',
+  pipe: '│',
+  dot: '·',
+  diamond: '◆',
+  arrow: '›',
+  star: '✦',
 };
 
-function parseFlags(args: string[]): { json: boolean; styleName: string; hide: Set<HiddenField>; sep: string | null } {
+interface ParsedFlags {
+  json: boolean;
+  styleName: string;
+  styleExplicit: boolean;
+  themeName: string | null;
+  hide: Set<HiddenField>;
+  sep: string | null;
+}
+
+function parseFlags(args: string[]): ParsedFlags {
   let json = false;
   let styleName = DEFAULT_STYLE;
+  let styleExplicit = false;
+  let themeName: string | null = null;
   let hide = new Set<HiddenField>();
   let sep: string | null = null;
   for (let i = 0; i < args.length; i++) {
@@ -74,8 +90,14 @@ function parseFlags(args: string[]): { json: boolean; styleName: string; hide: S
       json = true;
     } else if (arg === '--style' && i + 1 < args.length) {
       styleName = args[++i];
+      styleExplicit = true;
     } else if (arg.startsWith('--style=')) {
       styleName = arg.slice('--style='.length);
+      styleExplicit = true;
+    } else if (arg === '--theme' && i + 1 < args.length) {
+      themeName = args[++i];
+    } else if (arg.startsWith('--theme=')) {
+      themeName = arg.slice('--theme='.length);
     } else if (arg === '--hide' && i + 1 < args.length) {
       hide = parseHide(args[++i]);
     } else if (arg.startsWith('--hide=')) {
@@ -86,7 +108,7 @@ function parseFlags(args: string[]): { json: boolean; styleName: string; hide: S
       sep = arg.slice('--sep='.length);
     }
   }
-  return { json, styleName, hide, sep };
+  return { json, styleName, styleExplicit, themeName, hide, sep };
 }
 
 async function readStdin(): Promise<string> {
@@ -114,14 +136,18 @@ async function main(): Promise<void> {
   if (args.includes('--help') || args.includes('-h')) {
     process.stdout.write(
       'Usage: claude-usage-line [options]\n' +
-      '       claude-usage-line setup\n\n' +
+      '       claude-usage-line setup [--theme <name>] [--force]\n\n' +
       'Options:\n' +
+      '  --theme <name>  Use a shipped theme (e.g. dark-contrast)\n' +
       '  --style <name>  Bar style (classic, dot, braille, block, ascii, square, pipe)\n' +
       '  --hide <fields> Hide fields: cost,diff,duration,model,cwd,branch\n' +
-      '  --sep <name>    Separator style: bullet (default), pipe\n' +
+      '  --sep <name>    Separator: bullet (default), pipe, dot, diamond, arrow, star\n' +
       '  --json          Output JSON\n' +
       '  --help          Show this help\n' +
-      '  --version       Show version\n'
+      '  --version       Show version\n\n' +
+      'Setup options:\n' +
+      '  --theme <name>  Include --theme flag in statusline command and copy theme file\n' +
+      '  --force         Overwrite existing configuration\n'
     );
     process.exit(0);
   }
@@ -132,11 +158,24 @@ async function main(): Promise<void> {
   }
 
   if (args[0] === 'setup') {
-    runSetup();
+    runSetup(args.slice(1));
     return;
   }
 
-  const { json, styleName, hide, sep } = parseFlags(args);
+  const { json, styleName, styleExplicit, themeName, hide: cliHide, sep } = parseFlags(args);
+
+  if (themeName) {
+    if (!isValidThemeName(themeName)) {
+      process.stderr.write(`Invalid theme name: ${themeName}\n`);
+      process.exit(1);
+    }
+    const themePath = getBaseThemePath(themeName);
+    if (!existsSync(themePath)) {
+      process.stderr.write(`Unknown theme: ${themeName}\nShipped themes are in the themes/ directory of the package.\n`);
+      process.exit(1);
+    }
+    setBaseTheme(themeName);
+  }
 
   if (!json) {
     const style = getStyle(styleName);
@@ -145,6 +184,9 @@ async function main(): Promise<void> {
       process.exit(1);
     }
   }
+
+  const themeHide = themeHideFields();
+  const hide = new Set<HiddenField>([...themeHide, ...cliHide]);
 
   const raw = await readStdin();
   let parsed: unknown = {};
@@ -161,9 +203,16 @@ async function main(): Promise<void> {
   if (json) {
     process.stdout.write(JSON.stringify(buildJSONOutput(input, hide)) + '\n');
   } else {
-    let style = getStyle(styleName)!;
+    // Precedence: styles.ts defaults → --theme (style+colors) → user theme file → --style flag → --sep flag
+    // When --style is explicit, it wins for style properties (filled, empty, width, separator, resetIcon)
+    // Theme still wins for colors regardless
+    let style = styleExplicit ? getStyle(styleName)! : applyThemeToStyle(getStyle(styleName)!);
     if (sep) {
-      const resolved = SEPARATORS[sep] ?? sep;
+      const resolved = SEPARATORS[sep];
+      if (!resolved) {
+        process.stderr.write(`Unknown separator: ${sep}\nAvailable: ${Object.keys(SEPARATORS).join(', ')}\n`);
+        process.exit(1);
+      }
       style = { ...style, separator: resolved };
     }
     process.stdout.write(renderStatusline(input, style, hide) + '\n');

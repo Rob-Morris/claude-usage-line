@@ -1,5 +1,7 @@
 export type HiddenField = 'cost' | 'diff' | 'duration' | 'model' | 'cwd' | 'branch';
 
+export const VALID_HIDE_FIELDS = new Set<HiddenField>(['cost', 'diff', 'duration', 'model', 'cwd', 'branch']);
+
 export interface StatuslineInput {
   context_window: {
     used_percentage: number;
@@ -34,6 +36,30 @@ export interface CachedUsage {
   five_hour: RateLimitBucket | null;
   seven_day: RateLimitBucket | null;
   fetched_at: number;
+}
+
+export interface ThemeColors {
+  readonly context?: string;
+  readonly five_hour?: string;
+  readonly seven_day?: string;
+  readonly cwd?: string;
+  readonly branch?: string;
+  readonly model?: string;
+  readonly cost?: string;
+  readonly diff_add?: string;
+  readonly diff_remove?: string;
+  readonly duration?: string;
+  readonly five_hour_reset?: string;
+  readonly seven_day_reset?: string;
+  readonly dim?: string;
+  readonly warn?: string;
+  readonly danger?: string;
+}
+
+export interface ThemeConfig {
+  readonly style?: Partial<Omit<BarStyle, 'name'>>;
+  readonly colors?: ThemeColors;
+  readonly hide?: readonly HiddenField[];
 }
 
 export interface JSONOutput {

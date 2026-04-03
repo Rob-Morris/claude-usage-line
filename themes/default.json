@@ -1,0 +1,24 @@
+{
+  "style": {
+    "filled": "█",
+    "empty": "░",
+    "width": 8,
+    "separator": "•",
+    "resetIcon": "⟳"
+  },
+  "colors": {
+    "context": "magenta",
+    "five_hour": "cyan",
+    "seven_day": "green",
+    "cwd": "blue",
+    "branch": "green",
+    "model": "magenta",
+    "cost": "yellow",
+    "diff_add": "green",
+    "diff_remove": "red",
+    "duration": "blue",
+    "dim": "bright_black",
+    "warn": "yellow",
+    "danger": "red"
+  }
+}

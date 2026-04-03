@@ -1,0 +1,24 @@
+{
+  "style": {
+    "filled": "▰",
+    "empty": "▱",
+    "width": 10,
+    "separator": "•",
+    "resetIcon": "⟳"
+  },
+  "colors": {
+    "context": "rgb:180,140,255",
+    "five_hour": "rgb:80,200,200",
+    "seven_day": "rgb:80,200,120",
+    "cwd": "rgb:140,180,220",
+    "branch": "rgb:100,210,255",
+    "model": "rgb:100,160,255",
+    "cost": "bright_yellow",
+    "diff_add": "rgb:80,200,120",
+    "diff_remove": "bright_red",
+    "duration": "bright_white",
+    "dim": "bright_black",
+    "warn": "rgb:230,180,50",
+    "danger": "rgb:230,100,50"
+  }
+}

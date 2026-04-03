@@ -1,0 +1,24 @@
+{
+  "style": {
+    "filled": "▰",
+    "empty": "▱",
+    "width": 10,
+    "separator": "✦",
+    "resetIcon": "⟳"
+  },
+  "colors": {
+    "context": "rgb:160,125,60",
+    "five_hour": "rgb:30,150,140",
+    "seven_day": "rgb:30,150,140",
+    "cwd": "rgb:100,100,105",
+    "branch": "rgb:40,140,155",
+    "model": "rgb:170,80,130",
+    "cost": "rgb:175,135,15",
+    "diff_add": "rgb:40,150,60",
+    "diff_remove": "rgb:195,55,45",
+    "duration": "rgb:100,100,105",
+    "dim": "rgb:170,170,180",
+    "warn": "rgb:175,135,15",
+    "danger": "rgb:195,55,45"
+  }
+}

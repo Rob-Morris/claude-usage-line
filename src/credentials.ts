@@ -1,5 +1,5 @@
 import { execFileSync } from 'child_process';
-import { readFileSync } from 'fs';
+import { readFileSync, lstatSync } from 'fs';
 import { getPlatform, getCredentialsPath } from './platform.js';
 
 function extractAccessToken(json: string): string | null {
@@ -76,7 +76,9 @@ function hasDBusSession(): boolean {
 
 function fromCredentialsFile(): string | null {
   try {
-    const raw = readFileSync(getCredentialsPath(), 'utf-8');
+    const credPath = getCredentialsPath();
+    if (lstatSync(credPath).isSymbolicLink()) return null;
+    const raw = readFileSync(credPath, 'utf-8');
     return extractAccessToken(raw);
   } catch {
     return null;

@@ -8,7 +8,7 @@ export function renderBar(pct: number, baseColor: string, style: BarStyle): stri
   return (
     color +
     style.filled.repeat(fill) +
-    DIM +
+    DIM() +
     style.empty.repeat(style.width - fill) +
     RST +
     ' ' +

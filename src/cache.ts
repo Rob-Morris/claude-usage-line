@@ -1,6 +1,6 @@
-import { readFileSync, writeFileSync, renameSync, mkdirSync, unlinkSync, statSync, openSync, writeSync, closeSync, lstatSync, constants } from 'fs';
+import { readFileSync, unlinkSync, statSync, openSync, writeSync, closeSync, lstatSync, mkdirSync, constants } from 'fs';
 import { dirname } from 'path';
-import { getCachePath } from './platform.js';
+import { getCachePath, atomicWrite } from './platform.js';
 import type { CachedUsage, RateLimitBucket } from './types.js';
 
 const CACHE_TTL = 60; // seconds
@@ -32,7 +32,9 @@ function validateCached(raw: unknown): CachedUsage | null {
 
 export function readCache(): CachedUsage | null {
   try {
-    const data = readFileSync(getCachePath(), 'utf-8');
+    const cachePath = getCachePath();
+    if (lstatSync(cachePath).isSymbolicLink()) return null;
+    const data = readFileSync(cachePath, 'utf-8');
     const parsed = JSON.parse(data);
     return validateCached(parsed);
   } catch {
@@ -46,12 +48,7 @@ export function isCacheStale(cached: CachedUsage | null): boolean {
 }
 
 export function writeCache(usage: CachedUsage): void {
-  const cachePath = getCachePath();
-  mkdirSync(dirname(cachePath), { recursive: true, mode: 0o700 });
-  const tmp = cachePath + '.' + process.pid + '.tmp';
-  try { unlinkSync(tmp); } catch {}
-  safeWriteExclusive(tmp, JSON.stringify(usage), 0o600);
-  renameSync(tmp, cachePath);
+  atomicWrite(getCachePath(), JSON.stringify(usage));
 }
 
 // --- Fetch lock (thundering herd prevention) ---
