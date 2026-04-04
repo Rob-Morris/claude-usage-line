@@ -6,3 +6,5 @@ dist/
 .vscode/
 .idea/
 *.log
+.claude/settings.local.json
+CLAUDE.local.md

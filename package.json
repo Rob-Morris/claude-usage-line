@@ -1,16 +1,16 @@
 {
-  "name": "claude-usage-line",
+  "name": "@robmorris/claude-usage-line",
   "version": "1.1.0",
   "description": "Cross-platform Claude Code statusline showing session, 5h, and 7d rate limits",
-  "author": "Engin Açıkgöz",
+  "author": "Rob Morris",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/canack/claude-usage-line.git"
+    "url": "git+https://github.com/Rob-Morris/claude-usage-line.git"
   },
-  "homepage": "https://github.com/canack/claude-usage-line#readme",
+  "homepage": "https://github.com/Rob-Morris/claude-usage-line#readme",
   "bugs": {
-    "url": "https://github.com/canack/claude-usage-line/issues"
+    "url": "https://github.com/Rob-Morris/claude-usage-line/issues"
   },
   "type": "commonjs",
   "bin": {

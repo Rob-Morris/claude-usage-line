@@ -30,7 +30,7 @@ export function runSetup(args: string[] = []): void {
   const settingsPath = getSettingsPath();
   mkdirSync(dirname(settingsPath), { recursive: true, mode: 0o700 });
 
-  let desired = 'npx claude-usage-line';
+  let desired = 'npx @robmorris/claude-usage-line';
   if (themeName) desired += ' --theme ' + themeName;
 
   let settings: Record<string, unknown> = {};

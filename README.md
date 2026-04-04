@@ -1,12 +1,14 @@
 # claude-usage-line
 
-[![npm](https://img.shields.io/npm/v/claude-usage-line)](https://npmjs.com/package/claude-usage-line)
-[![license](https://img.shields.io/npm/l/claude-usage-line)](LICENSE)
-[![node](https://img.shields.io/node/v/claude-usage-line)](package.json)
+[![npm](https://img.shields.io/npm/v/@robmorris/claude-usage-line)](https://npmjs.com/package/@robmorris/claude-usage-line)
+[![license](https://img.shields.io/npm/l/@robmorris/claude-usage-line)](LICENSE)
+[![node](https://img.shields.io/node/v/@robmorris/claude-usage-line)](package.json)
 
-<img width="663" height="141" alt="Screenshot 2026-03-29 at 20 19 21" src="https://github.com/user-attachments/assets/d78c061c-c263-4252-aed9-f1c4252cf94d" />
+<img width="633" height="137" alt="claude-usage-line statusline screenshot" src="https://raw.githubusercontent.com/Rob-Morris/claude-usage-line/main/screenshot.png" />
 
 Cross-platform Claude Code statusline — session context, 5-hour & 7-day rate limits, git branch, diff stats, cost, and duration. Zero runtime dependencies, no `jq` required.
+
+> Forked from [canack/claude-usage-line](https://github.com/canack/claude-usage-line). Props to Engin Açıkgöz. Chosen from a crowded field for its zero runtime dependencies, strong security posture, and well-structured (clean, thorough, transparent) TypeScript
 
 **Full output** (when Claude Code sends extended data):
 
@@ -30,13 +32,13 @@ Cx █████░░░ 62% • 5h ████░░░░ 48% ⟳3h28m •
 ## Quick Start
 
 ```bash
-npx claude-usage-line setup
+npx @robmorris/claude-usage-line setup
 ```
 
 With a theme:
 
 ```bash
-npx claude-usage-line setup --theme dark-contrast
+npx @robmorris/claude-usage-line setup --theme dark-contrast
 ```
 
 Or manually add to `~/.claude/settings.json`:
@@ -45,7 +47,7 @@ Or manually add to `~/.claude/settings.json`:
 {
   "statusLine": {
     "type": "command",
-    "command": "npx claude-usage-line"
+    "command": "npx @robmorris/claude-usage-line"
   }
 }
 ```
@@ -56,7 +58,7 @@ With a theme and custom bar style:
 {
   "statusLine": {
     "type": "command",
-    "command": "npx claude-usage-line --theme dark-contrast --style dot"
+    "command": "npx @robmorris/claude-usage-line --theme dark-contrast --style dot"
   }
 }
 ```
@@ -139,7 +141,7 @@ Select a shipped theme:
 {
   "statusLine": {
     "type": "command",
-    "command": "npx claude-usage-line --theme dark-contrast"
+    "command": "npx @robmorris/claude-usage-line --theme dark-contrast"
   }
 }
 ```
@@ -147,7 +149,7 @@ Select a shipped theme:
 Or set it up automatically:
 
 ```bash
-npx claude-usage-line setup --theme dark-contrast
+npx @robmorris/claude-usage-line setup --theme dark-contrast
 ```
 
 ### User theme file
@@ -213,7 +215,7 @@ styles.ts defaults → --theme file → ~/.claude/statusline-theme.json → --st
 ## JSON Output
 
 ```bash
-echo '{"context_window":{"used_percentage":62}}' | npx claude-usage-line --json
+echo '{"context_window":{"used_percentage":62}}' | npx @robmorris/claude-usage-line --json
 ```
 
 ```json
@@ -258,7 +260,7 @@ Hide parts of the output using `--hide` or the `hide` key in your theme file:
 {
   "statusLine": {
     "type": "command",
-    "command": "npx claude-usage-line --hide cost,duration"
+    "command": "npx @robmorris/claude-usage-line --hide cost,duration"
   }
 }
 ```
