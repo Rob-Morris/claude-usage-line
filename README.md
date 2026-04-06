@@ -27,7 +27,7 @@ Cx █████░░░ 62% • 5h ████░░░░ 48% ⟳3h28m •
 
 - Node.js ≥ 18
 - Claude Code with statusline support
-- **OAuth login** — required for rate limit data (5h / 7d bars). Session bar works without it.
+- **Claude.ai Pro/Max subscription** — required for rate limit data (5h / 7d bars). Session bar works without it.
 
 ## Quick Start
 
@@ -74,13 +74,12 @@ Claude Code                      claude-usage-line
     │    "context_window": {...},        │
     │    "cwd": "/path",                │
     │    "model": {"display_name":".."},│
-    │    "cost": {...}                  │
+    │    "cost": {...},                 │
+    │    "rate_limits": {...}           │
     │  }                                │
     ├──────────────────────────────────▶│
     │                                   ├─▶ Load theme (--theme + user file)
     │                                   ├─▶ Detect git branch (if cwd given)
-    │                                   ├─▶ Read cached rate limits (60s TTL)
-    │                                   ├─▶ If stale: background OAuth fetch
     │                                   │
     │  stdout: ANSI statusline          │
     │◀──────────────────────────────────┤
@@ -97,10 +96,14 @@ The tool accepts these fields via stdin JSON:
 | `cost.total_lines_removed` | No | Lines removed (red) |
 | `cost.total_cost_usd` | No | Session cost in USD |
 | `cost.total_duration_ms` | No | Session duration |
+| `rate_limits.five_hour.used_percentage` | No | 5-hour rolling window usage % |
+| `rate_limits.five_hour.resets_at` | No | Reset time (Unix epoch seconds) |
+| `rate_limits.seven_day.used_percentage` | No | 7-day rolling window usage % |
+| `rate_limits.seven_day.resets_at` | No | Reset time (Unix epoch seconds) |
 
 When `cwd` or `model` is present → 2-line output. Otherwise → single-line (backward compatible).
 
-Rate limit data comes from `https://api.anthropic.com/api/oauth/usage` via OAuth token. API key auth does not provide rate limit visibility — bars show `0%` and `--`.
+Rate limit data is provided by Claude Code via stdin. The `rate_limits` fields are only present for Claude.ai Pro/Max subscribers and may be absent early in a session — bars show `0%` and `--` when missing.
 
 ## Bar Styles
 
@@ -274,16 +277,6 @@ Or in `~/.claude/statusline-theme.json`:
 ```
 
 Theme and CLI hide fields are combined (union of both). Available fields: `cost`, `diff`, `duration`, `model`, `cwd`, `branch`
-
-## Credential Resolution
-
-OAuth token lookup order:
-
-1. `CLAUDE_CODE_OAUTH_TOKEN` env var (consumed once, deleted from env)
-2. macOS Keychain (`security find-generic-password`)
-3. Linux `secret-tool` (requires D-Bus session — skipped in headless/Docker)
-4. Windows Credential Manager (PasswordVault API via PowerShell)
-5. `~/.claude/.credentials.json` (fallback)
 
 ## Development
 

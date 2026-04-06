@@ -1,12 +1,10 @@
 import { DIFF_ADD_COLOR, DIFF_REMOVE_COLOR, COST_COLOR, CWD_COLOR, MODEL_COLOR, DIM, RST, CONTEXT_COLOR, FIVE_HOUR_COLOR, SEVEN_DAY_COLOR, FIVE_HOUR_RESET_COLOR, SEVEN_DAY_RESET_COLOR, DURATION_COLOR, BRANCH_COLOR, colorByThreshold, dim } from './ansi.js';
 import { renderBar } from './bar.js';
-import { readCache, isCacheStale } from './cache.js';
-import { formatRemaining } from './time.js';
-import { spawnBackgroundFetch } from './usage-api.js';
+import { formatRemainingEpoch } from './time.js';
 import { getGitBranch } from './git.js';
 import { homedir } from 'os';
 import { sep as pathSep } from 'path';
-import type { StatuslineInput, BarStyle, CachedUsage, JSONOutput, HiddenField } from './types.js';
+import type { StatuslineInput, BarStyle, JSONOutput, HiddenField } from './types.js';
 
 interface ResolvedUsage {
   sesPct: number;
@@ -14,22 +12,23 @@ interface ResolvedUsage {
   wkPct: number;
   fhRemain: string;
   wkRemain: string;
-  cached: CachedUsage | null;
+  fhResetsAt: string | null;
+  wkResetsAt: string | null;
 }
 
 function resolveUsage(input: StatuslineInput): ResolvedUsage {
-  const cached = readCache();
-  if (isCacheStale(cached)) {
-    spawnBackgroundFetch();
-  }
+  const rl = input.rate_limits;
+  const fhEpoch = rl?.five_hour?.resets_at;
+  const wkEpoch = rl?.seven_day?.resets_at;
 
   return {
     sesPct: Math.floor(input.context_window.used_percentage ?? 0),
-    fhPct: Math.floor(cached?.five_hour?.utilization ?? 0),
-    wkPct: Math.floor(cached?.seven_day?.utilization ?? 0),
-    fhRemain: formatRemaining(cached?.five_hour?.resets_at),
-    wkRemain: formatRemaining(cached?.seven_day?.resets_at),
-    cached,
+    fhPct: Math.floor(rl?.five_hour?.used_percentage ?? 0),
+    wkPct: Math.floor(rl?.seven_day?.used_percentage ?? 0),
+    fhRemain: fhEpoch != null ? formatRemainingEpoch(fhEpoch * 1000) : '--',
+    wkRemain: wkEpoch != null ? formatRemainingEpoch(wkEpoch * 1000) : '--',
+    fhResetsAt: fhEpoch != null ? new Date(fhEpoch * 1000).toISOString() : null,
+    wkResetsAt: wkEpoch != null ? new Date(wkEpoch * 1000).toISOString() : null,
   };
 }
 
@@ -132,7 +131,7 @@ export function renderStatusline(input: StatuslineInput, style: BarStyle, hide: 
 }
 
 export function buildJSONOutput(input: StatuslineInput, hide: Set<HiddenField> = new Set()): JSONOutput {
-  const { sesPct, fhPct, wkPct, fhRemain, wkRemain, cached } = resolveUsage(input);
+  const { sesPct, fhPct, wkPct, fhRemain, wkRemain, fhResetsAt, wkResetsAt } = resolveUsage(input);
   const branch = !hide.has('branch') && input.cwd ? getGitBranch(input.cwd) : null;
 
   return {
@@ -146,12 +145,12 @@ export function buildJSONOutput(input: StatuslineInput, hide: Set<HiddenField> =
     },
     five_hour: {
       utilization_pct: fhPct,
-      resets_at: cached?.five_hour?.resets_at ?? null,
+      resets_at: fhResetsAt,
       remaining: fhRemain,
     },
     seven_day: {
       utilization_pct: wkPct,
-      resets_at: cached?.seven_day?.resets_at ?? null,
+      resets_at: wkResetsAt,
       remaining: wkRemain,
     },
     diff: {

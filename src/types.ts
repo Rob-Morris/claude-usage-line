@@ -2,6 +2,11 @@ export type HiddenField = 'cost' | 'diff' | 'duration' | 'model' | 'cwd' | 'bran
 
 export const VALID_HIDE_FIELDS = new Set<HiddenField>(['cost', 'diff', 'duration', 'model', 'cwd', 'branch']);
 
+export interface InputRateLimitBucket {
+  used_percentage: number;
+  resets_at: number; // Unix epoch seconds
+}
+
 export interface StatuslineInput {
   context_window: {
     used_percentage: number;
@@ -16,6 +21,10 @@ export interface StatuslineInput {
     total_cost_usd?: number;
     total_duration_ms?: number;
   };
+  rate_limits?: {
+    five_hour?: InputRateLimitBucket | null;
+    seven_day?: InputRateLimitBucket | null;
+  };
 }
 
 export interface BarStyle {
@@ -25,17 +34,6 @@ export interface BarStyle {
   readonly width: number;
   readonly separator: string;
   readonly resetIcon: string;
-}
-
-export interface RateLimitBucket {
-  utilization: number;
-  resets_at: string;
-}
-
-export interface CachedUsage {
-  five_hour: RateLimitBucket | null;
-  seven_day: RateLimitBucket | null;
-  fetched_at: number;
 }
 
 export interface ThemeColors {

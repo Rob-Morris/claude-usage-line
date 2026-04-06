@@ -1,8 +1,5 @@
-export function formatRemaining(resetsAt: string | null | undefined): string {
-  if (!resetsAt) return '--';
-  const resetEpoch = Date.parse(resetsAt);
-  if (isNaN(resetEpoch)) return '--';
-  const diff = Math.floor((resetEpoch - Date.now()) / 1000);
+export function formatRemainingEpoch(resetEpochMs: number): string {
+  const diff = Math.floor((resetEpochMs - Date.now()) / 1000);
   if (diff <= 0) return 'now';
   const d = Math.floor(diff / 86400);
   const h = Math.floor((diff % 86400) / 3600);

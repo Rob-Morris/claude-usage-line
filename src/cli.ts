@@ -8,10 +8,20 @@ import { runSetup } from './setup.js';
 import { getStyle, styleNames, DEFAULT_STYLE } from './styles.js';
 import { setBaseTheme, getBaseThemePath, isValidThemeName, applyThemeToStyle, themeHideFields } from './theme.js';
 import { VALID_HIDE_FIELDS } from './types.js';
-import type { StatuslineInput, HiddenField } from './types.js';
+import type { StatuslineInput, HiddenField, InputRateLimitBucket } from './types.js';
 
 const STDIN_TIMEOUT = 3000;
 const MAX_STDIN = 64 * 1024;
+
+function parseRateLimitBucket(v: unknown): InputRateLimitBucket | undefined {
+  if (typeof v !== 'object' || v === null) return undefined;
+  const b = v as Record<string, unknown>;
+  if (typeof b.used_percentage === 'number' && Number.isFinite(b.used_percentage) &&
+      typeof b.resets_at === 'number' && Number.isFinite(b.resets_at) && b.resets_at > 0) {
+    return { used_percentage: b.used_percentage, resets_at: b.resets_at };
+  }
+  return undefined;
+}
 
 function validateInput(raw: unknown): StatuslineInput {
   const fallback: StatuslineInput = { context_window: { used_percentage: 0 } };
@@ -45,6 +55,17 @@ function validateInput(raw: unknown): StatuslineInput {
     if (typeof cost.total_lines_removed === 'number') result.cost.total_lines_removed = cost.total_lines_removed;
     if (typeof cost.total_cost_usd === 'number') result.cost.total_cost_usd = cost.total_cost_usd;
     if (typeof cost.total_duration_ms === 'number') result.cost.total_duration_ms = cost.total_duration_ms;
+  }
+
+  const rl = obj.rate_limits as Record<string, unknown> | undefined;
+  if (rl && typeof rl === 'object') {
+    const fh = parseRateLimitBucket(rl.five_hour);
+    const sd = parseRateLimitBucket(rl.seven_day);
+    if (fh || sd) {
+      result.rate_limits = {};
+      if (fh) result.rate_limits.five_hour = fh;
+      if (sd) result.rate_limits.seven_day = sd;
+    }
   }
 
   return result;
