@@ -7,6 +7,16 @@ export interface InputRateLimitBucket {
   resets_at: number; // Unix epoch seconds
 }
 
+export function parseRateLimitBucket(v: unknown): InputRateLimitBucket | undefined {
+  if (typeof v !== 'object' || v === null) return undefined;
+  const b = v as Record<string, unknown>;
+  if (typeof b.used_percentage === 'number' && Number.isFinite(b.used_percentage) &&
+      typeof b.resets_at === 'number' && Number.isFinite(b.resets_at) && b.resets_at > 0) {
+    return { used_percentage: b.used_percentage, resets_at: b.resets_at };
+  }
+  return undefined;
+}
+
 export interface StatuslineInput {
   context_window: {
     used_percentage: number;

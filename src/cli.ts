@@ -7,21 +7,12 @@ import { renderStatusline, buildJSONOutput } from './statusline.js';
 import { runSetup } from './setup.js';
 import { getStyle, styleNames, DEFAULT_STYLE } from './styles.js';
 import { setBaseTheme, getBaseThemePath, isValidThemeName, applyThemeToStyle, themeHideFields } from './theme.js';
-import { VALID_HIDE_FIELDS } from './types.js';
-import type { StatuslineInput, HiddenField, InputRateLimitBucket } from './types.js';
+import { readCache, writeCache } from './cache.js';
+import { VALID_HIDE_FIELDS, parseRateLimitBucket } from './types.js';
+import type { StatuslineInput, HiddenField } from './types.js';
 
 const STDIN_TIMEOUT = 3000;
 const MAX_STDIN = 64 * 1024;
-
-function parseRateLimitBucket(v: unknown): InputRateLimitBucket | undefined {
-  if (typeof v !== 'object' || v === null) return undefined;
-  const b = v as Record<string, unknown>;
-  if (typeof b.used_percentage === 'number' && Number.isFinite(b.used_percentage) &&
-      typeof b.resets_at === 'number' && Number.isFinite(b.resets_at) && b.resets_at > 0) {
-    return { used_percentage: b.used_percentage, resets_at: b.resets_at };
-  }
-  return undefined;
-}
 
 function validateInput(raw: unknown): StatuslineInput {
   const fallback: StatuslineInput = { context_window: { used_percentage: 0 } };
@@ -220,6 +211,21 @@ async function main(): Promise<void> {
   }
 
   const input = validateInput(parsed);
+
+  // Cache: write rate limits when present, read from cache when absent
+  if (input.rate_limits?.five_hour || input.rate_limits?.seven_day) {
+    writeCache({
+      five_hour: input.rate_limits.five_hour ?? undefined,
+      seven_day: input.rate_limits.seven_day ?? undefined,
+    });
+  } else if (!input.rate_limits) {
+    const cached = readCache();
+    if (cached) {
+      input.rate_limits = {};
+      if (cached.five_hour) input.rate_limits.five_hour = cached.five_hour;
+      if (cached.seven_day) input.rate_limits.seven_day = cached.seven_day;
+    }
+  }
 
   if (json) {
     process.stdout.write(JSON.stringify(buildJSONOutput(input, hide)) + '\n');
