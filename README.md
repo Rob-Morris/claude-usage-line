@@ -79,6 +79,7 @@ Claude Code                      claude-usage-line
     │  }                                │
     ├──────────────────────────────────▶│
     │                                   ├─▶ Load theme (--theme + user file)
+    │                                   ├─▶ Cache rate limits / read cached
     │                                   ├─▶ Detect git branch (if cwd given)
     │                                   │
     │  stdout: ANSI statusline          │
@@ -103,7 +104,7 @@ The tool accepts these fields via stdin JSON:
 
 When `cwd` or `model` is present → 2-line output. Otherwise → single-line (backward compatible).
 
-Rate limit data is provided by Claude Code via stdin. The `rate_limits` fields are only present for Claude.ai Pro/Max subscribers and may be absent early in a session — bars show `0%` and `--` when missing.
+Rate limit data is provided by Claude Code via stdin. The `rate_limits` fields are only present for Claude.ai Pro/Max subscribers — bars show `0%` and `--` without a qualifying subscription. Rate limit data is cached locally so new sessions display the last known values until fresh data arrives. Cached values expire when their reset window passes.
 
 ## Bar Styles
 

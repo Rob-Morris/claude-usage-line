@@ -4,10 +4,12 @@ Forked from [canack/claude-usage-line](https://github.com/canack/claude-usage-li
 
 ## Architecture
 
-Pure stdin→stdout transformation. Claude Code pipes JSON on each statusline update, the script parses it, renders ANSI output, and exits. No network calls, no filesystem state, no background processes.
+Pure stdin→stdout transformation. Claude Code pipes JSON on each statusline update, the script parses it, renders ANSI output, and exits. No network calls, no background processes. Rate limit data is cached to disk so new sessions can display the last known values before fresh data arrives.
 
 ```
 Claude Code → stdin JSON → parse & validate → render → stdout ANSI
+                                ↕
+                        rate limit cache
 ```
 
 ### Source structure
@@ -19,7 +21,8 @@ Claude Code → stdin JSON → parse & validate → render → stdout ANSI
 | `bar.ts` | Progress bar rendering |
 | `ansi.ts` | ANSI color functions with theme support |
 | `styles.ts` | Bar style definitions |
-| `types.ts` | TypeScript interfaces |
+| `types.ts` | TypeScript interfaces and shared validators |
+| `cache.ts` | Rate limit cache (read/write/validate/expire) |
 | `platform.ts` | OS-agnostic path resolution, atomic file writes |
 | `theme.ts` | Theme loading, merging, color resolution |
 | `git.ts` | Git branch detection via `execFileSync` |
@@ -71,7 +74,7 @@ File writes must use:
 
 ### 5. No network calls, no credential access
 
-As of v1.2.0, all data comes from Claude Code's stdin JSON. Do not add network calls or credential access. If upstream data changes, the fix belongs in the stdin parsing, not in a separate API call.
+All data comes from Claude Code's stdin JSON. Do not add network calls or credential access. If upstream data changes, the fix belongs in the stdin parsing, not in a separate API call. The only filesystem state is the rate limit cache, which follows the safe file operations in section 4.
 
 ### 6. Graceful degradation
 
