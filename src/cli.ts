@@ -8,11 +8,19 @@ import { runSetup } from './setup.js';
 import { getStyle, styleNames, DEFAULT_STYLE } from './styles.js';
 import { setBaseTheme, getBaseThemePath, isValidThemeName, applyThemeToStyle, themeHideFields } from './theme.js';
 import { readCache, writeCache } from './cache.js';
-import { VALID_HIDE_FIELDS, parseRateLimitBucket } from './types.js';
+import { VALID_HIDE_FIELDS, isEffortLevel, parseRateLimitBucket } from './types.js';
 import type { StatuslineInput, HiddenField } from './types.js';
 
 const STDIN_TIMEOUT = 3000;
 const MAX_STDIN = 64 * 1024;
+const MAX_CWD_LENGTH = 4096;
+const MAX_DISPLAY_LABEL_LENGTH = 256;
+const CONTROL_CHARACTERS = /[\x00-\x1f\x7f-\x9f]/;
+
+function parseSafeText(value: unknown, maxLength: number): string | undefined {
+  if (typeof value !== 'string' || value.length === 0 || value.length > maxLength) return undefined;
+  return CONTROL_CHARACTERS.test(value) ? undefined : value;
+}
 
 function validateInput(raw: unknown): StatuslineInput {
   const fallback: StatuslineInput = { context_window: { used_percentage: 0 } };
@@ -28,14 +36,25 @@ function validateInput(raw: unknown): StatuslineInput {
     context_window: { used_percentage: pct },
   };
 
-  if (typeof obj.cwd === 'string' && obj.cwd.length > 0) {
-    result.cwd = obj.cwd;
+  const cwd = parseSafeText(obj.cwd, MAX_CWD_LENGTH);
+  if (cwd) result.cwd = cwd;
+
+  const workspace = obj.workspace as Record<string, unknown> | undefined;
+  if (workspace && typeof workspace === 'object') {
+    const gitWorktree = parseSafeText(workspace.git_worktree, MAX_DISPLAY_LABEL_LENGTH);
+    if (gitWorktree) result.workspace = { git_worktree: gitWorktree };
   }
 
   const model = obj.model as Record<string, unknown> | undefined;
   if (model && typeof model === 'object') {
-    if (typeof model.display_name === 'string' && model.display_name.length > 0) {
-      result.model = { display_name: model.display_name };
+    const displayName = parseSafeText(model.display_name, MAX_DISPLAY_LABEL_LENGTH);
+    if (displayName) result.model = { display_name: displayName };
+  }
+
+  const effort = obj.effort as Record<string, unknown> | undefined;
+  if (effort && typeof effort === 'object') {
+    if (isEffortLevel(effort.level)) {
+      result.effort = { level: effort.level };
     }
   }
 
@@ -152,7 +171,7 @@ async function main(): Promise<void> {
       'Options:\n' +
       '  --theme <name>  Use a shipped theme (e.g. dark-contrast)\n' +
       '  --style <name>  Bar style (classic, dot, braille, block, ascii, square, pipe)\n' +
-      '  --hide <fields> Hide fields: cost,diff,duration,model,cwd,branch\n' +
+      '  --hide <fields> Hide fields: cost,diff,duration,model,effort,cwd,branch,worktree\n' +
       '  --sep <name>    Separator: bullet (default), pipe, dot, diamond, arrow, star\n' +
       '  --json          Output JSON\n' +
       '  --help          Show this help\n' +

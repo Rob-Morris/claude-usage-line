@@ -1,6 +1,15 @@
-export type HiddenField = 'cost' | 'diff' | 'duration' | 'model' | 'cwd' | 'branch';
+export type HiddenField = 'cost' | 'diff' | 'duration' | 'model' | 'cwd' | 'branch' | 'effort' | 'worktree';
 
-export const VALID_HIDE_FIELDS = new Set<HiddenField>(['cost', 'diff', 'duration', 'model', 'cwd', 'branch']);
+export const VALID_HIDE_FIELDS = new Set<HiddenField>(['cost', 'diff', 'duration', 'model', 'cwd', 'branch', 'effort', 'worktree']);
+
+export const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+export type EffortLevel = typeof EFFORT_LEVELS[number];
+
+const VALID_EFFORT_LEVELS: ReadonlySet<string> = new Set(EFFORT_LEVELS);
+
+export function isEffortLevel(value: unknown): value is EffortLevel {
+  return typeof value === 'string' && VALID_EFFORT_LEVELS.has(value);
+}
 
 export interface InputRateLimitBucket {
   used_percentage: number;
@@ -22,8 +31,14 @@ export interface StatuslineInput {
     used_percentage: number;
   };
   cwd?: string;
+  workspace?: {
+    git_worktree?: string;
+  };
   model?: {
     display_name?: string;
+  };
+  effort?: {
+    level?: EffortLevel;
   };
   cost?: {
     total_lines_added?: number;
@@ -52,7 +67,9 @@ export interface ThemeColors {
   readonly seven_day?: string;
   readonly cwd?: string;
   readonly branch?: string;
+  readonly worktree?: string;
   readonly model?: string;
+  readonly effort?: string;
   readonly cost?: string;
   readonly diff_add?: string;
   readonly diff_remove?: string;
@@ -72,8 +89,10 @@ export interface ThemeConfig {
 
 export interface JSONOutput {
   model: string | null;
+  effort: EffortLevel | null;
   cwd: string | null;
   git_branch: string | null;
+  git_worktree: string | null;
   session: {
     utilization_pct: number;
     resets_at: null;

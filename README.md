@@ -92,7 +92,9 @@ The tool accepts these fields via stdin JSON:
 |-------|----------|-------------|
 | `context_window.used_percentage` | Yes | Session context usage % |
 | `cwd` | No | Working directory → enables git branch detection |
+| `workspace.git_worktree` | No | Git worktree name shown on line 1 |
 | `model.display_name` | No | Model name shown on line 2 |
+| `effort.level` | No | Reasoning effort shown next to model (`low`/`medium`/`high`/`xhigh`/`max`) |
 | `cost.total_lines_added` | No | Lines added (green) |
 | `cost.total_lines_removed` | No | Lines removed (red) |
 | `cost.total_cost_usd` | No | Session cost in USD |
@@ -102,7 +104,7 @@ The tool accepts these fields via stdin JSON:
 | `rate_limits.seven_day.used_percentage` | No | 7-day rolling window usage % |
 | `rate_limits.seven_day.resets_at` | No | Reset time (Unix epoch seconds) |
 
-When `cwd` or `model` is present → 2-line output. Otherwise → single-line (backward compatible).
+When `cwd`, `workspace.git_worktree`, `model`, or `effort` is present → 2-line output. Otherwise → single-line (backward compatible).
 
 Rate limit data is provided by Claude Code via stdin. The `rate_limits` fields are only present for Claude.ai Pro/Max subscribers — bars show `0%` and `--` without a qualifying subscription. Rate limit data is cached locally so new sessions display the last known values until fresh data arrives. Cached values expire when their reset window passes.
 
@@ -201,7 +203,9 @@ Edit any key to customize:
 
 ### Color keys
 
-`context`, `five_hour`, `seven_day`, `cwd`, `branch`, `model`, `cost`, `diff_add`, `diff_remove`, `duration`, `five_hour_reset`, `seven_day_reset`, `dim`, `warn`, `danger`
+`context`, `five_hour`, `seven_day`, `cwd`, `branch`, `worktree`, `model`, `effort`, `cost`, `diff_add`, `diff_remove`, `duration`, `five_hour_reset`, `seven_day_reset`, `dim`, `warn`, `danger`
+
+`worktree` and `effort` are unset by default: `worktree` inherits the `branch` color and `effort` inherits the `model` color. Set them explicitly to give each its own color.
 
 Each bar changes color at thresholds: **< 50%** uses the base color, **≥ 50%** uses `warn`, **≥ 80%** uses `danger`.
 
@@ -225,8 +229,10 @@ echo '{"context_window":{"used_percentage":62}}' | npx @robmorris/claude-usage-l
 ```json
 {
   "model": null,
+  "effort": null,
   "cwd": null,
   "git_branch": null,
+  "git_worktree": null,
   "session": { "utilization_pct": 62, "resets_at": null, "remaining": "--" },
   "five_hour": { "utilization_pct": 48, "resets_at": "2026-02-26T14:00:00Z", "remaining": "3h28m" },
   "seven_day": { "utilization_pct": 63, "resets_at": "2026-02-28T00:00:00Z", "remaining": "22h30m" },
@@ -245,7 +251,7 @@ Usage: claude-usage-line [options]
 Options:
   --theme <name>  Use a shipped theme (e.g. dark-contrast)
   --style <name>  Bar style (classic, dot, braille, block, ascii, square, pipe)
-  --hide <fields> Hide fields (comma-separated): cost,diff,duration,model,cwd,branch
+  --hide <fields> Hide fields (comma-separated): cost,diff,duration,model,effort,cwd,branch,worktree
   --sep <name>    Separator: bullet (default), pipe, dot, diamond, arrow, star
   --json          Output JSON
   --help          Show help
@@ -277,12 +283,13 @@ Or in `~/.claude/statusline-theme.json`:
 }
 ```
 
-Theme and CLI hide fields are combined (union of both). Available fields: `cost`, `diff`, `duration`, `model`, `cwd`, `branch`
+Theme and CLI hide fields are combined (union of both). Available fields: `cost`, `diff`, `duration`, `model`, `effort`, `cwd`, `branch`, `worktree`
 
 ## Development
 
 ```bash
-npm run build
+npm run typecheck
+npm test
 echo '{"context_window":{"used_percentage":62}}' | node dist/cli.js
 echo '{"cwd":"/tmp","model":{"display_name":"Opus 4.6"},"context_window":{"used_percentage":85},"cost":{"total_lines_added":42,"total_lines_removed":10,"total_cost_usd":1.23,"total_duration_ms":3720000}}' | node dist/cli.js
 echo '{"context_window":{"used_percentage":55}}' | node dist/cli.js --theme dark-contrast

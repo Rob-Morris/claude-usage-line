@@ -8,7 +8,9 @@ export function FIVE_HOUR_COLOR(): string { return themeColor('five_hour'); }
 export function SEVEN_DAY_COLOR(): string { return themeColor('seven_day'); }
 export function CWD_COLOR(): string { return themeColor('cwd'); }
 export function BRANCH_COLOR(): string { return themeColor('branch'); }
+export function WORKTREE_COLOR(): string { return themeColor('worktree') || BRANCH_COLOR(); }
 export function MODEL_COLOR(): string { return themeColor('model'); }
+export function EFFORT_COLOR(): string { return themeColor('effort') || MODEL_COLOR(); }
 export function COST_COLOR(): string { return themeColor('cost'); }
 export function DIFF_ADD_COLOR(): string { return themeColor('diff_add'); }
 export function DIFF_REMOVE_COLOR(): string { return themeColor('diff_remove'); }

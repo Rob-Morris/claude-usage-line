@@ -41,7 +41,9 @@ All data comes from Claude Code's stdin JSON. The full schema is documented at [
 | `rate_limits.seven_day.used_percentage` | number | No | 7d window (0-100). Pro/Max only. |
 | `rate_limits.seven_day.resets_at` | number | No | Unix epoch seconds |
 | `cwd` | string | No | Working directory |
+| `workspace.git_worktree` | string | No | Git worktree name (any linked worktree) |
 | `model.display_name` | string | No | Current model name |
+| `effort.level` | string | No | Reasoning effort; validated against `low`/`medium`/`high`/`xhigh`/`max` |
 | `cost.total_cost_usd` | number | No | Session cost |
 | `cost.total_duration_ms` | number | No | Session duration |
 | `cost.total_lines_added` | number | No | Lines added |
@@ -60,6 +62,8 @@ The entire tool compiles to a single `dist/cli.js` via tsup. No `node_modules` a
 ### 2. Validate all external input at the boundary
 
 Stdin is untrusted. Every field must be validated with `typeof` checks and `Number.isFinite()` guards before use. Invalid or missing fields fall back to safe defaults. `validateInput()` in `cli.ts` is the single validation boundary — nothing downstream should trust raw input.
+
+Text fields rendered to the terminal (`cwd`, `model.display_name`, `workspace.git_worktree`) must additionally pass `parseSafeText()`, which rejects control characters (guarding against ANSI-escape injection) and over-length values. Enumerated fields such as `effort.level` are constrained to their allowed set via a typed guard (`isEffortLevel()`).
 
 ### 3. No shell invocation
 
@@ -86,8 +90,8 @@ The tool must never crash on bad input. Every failure path must produce a valid 
 # Install dev dependencies
 npm install
 
-# Build (tsup bundles to dist/cli.js)
-npm run build
+# Build and run automated CLI regression tests
+npm test
 
 # Test with synthetic input
 echo '{"context_window":{"used_percentage":42},"rate_limits":{"five_hour":{"used_percentage":94,"resets_at":1775460000},"seven_day":{"used_percentage":17,"resets_at":1775900000}}}' | node dist/cli.js
@@ -102,7 +106,7 @@ echo '{"context_window":{"used_percentage":42}}' | node dist/cli.js --json
 echo '{"context_window":{"used_percentage":55}}' | node dist/cli.js --theme dark-contrast --style dot
 ```
 
-Build must pass clean before submitting a PR.
+Typechecking, tests, and the build must pass clean before submitting a PR.
 
 ## Versioning
 
@@ -118,4 +122,4 @@ Semver. The user-facing contract is the CLI interface (flags, output format), no
 - **No unnecessary abstractions.** Three similar lines > a premature helper.
 - **No comments explaining what.** Only comment non-obvious _why_ (hidden constraints, workarounds).
 - **TypeScript strict mode.** All types explicit at module boundaries.
-- **Build must pass clean** before commit (`npm run build`).
+- **Typechecking, tests, and build must pass clean** before commit (`npm run typecheck`, `npm test`; the test command builds first).

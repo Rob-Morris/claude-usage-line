@@ -1,4 +1,4 @@
-import { DIFF_ADD_COLOR, DIFF_REMOVE_COLOR, COST_COLOR, CWD_COLOR, MODEL_COLOR, DIM, RST, CONTEXT_COLOR, FIVE_HOUR_COLOR, SEVEN_DAY_COLOR, FIVE_HOUR_RESET_COLOR, SEVEN_DAY_RESET_COLOR, DURATION_COLOR, BRANCH_COLOR, colorByThreshold, dim } from './ansi.js';
+import { DIFF_ADD_COLOR, DIFF_REMOVE_COLOR, COST_COLOR, CWD_COLOR, MODEL_COLOR, EFFORT_COLOR, DIM, RST, CONTEXT_COLOR, FIVE_HOUR_COLOR, SEVEN_DAY_COLOR, FIVE_HOUR_RESET_COLOR, SEVEN_DAY_RESET_COLOR, DURATION_COLOR, BRANCH_COLOR, WORKTREE_COLOR, colorByThreshold, dim } from './ansi.js';
 import { renderBar } from './bar.js';
 import { formatRemainingEpoch } from './time.js';
 import { getGitBranch } from './git.js';
@@ -54,7 +54,7 @@ function formatDuration(ms: number): string {
 }
 
 function hasExtendedInput(input: StatuslineInput): boolean {
-  return !!(input.cwd || input.model);
+  return !!(input.cwd || input.model?.display_name || input.workspace?.git_worktree || input.effort?.level);
 }
 
 function buildExtras(input: StatuslineInput, hide: Set<HiddenField>, sep: string): string[] {
@@ -105,22 +105,33 @@ export function renderStatusline(input: StatuslineInput, style: BarStyle, hide: 
   const showCwd = !hide.has('cwd') && !!input.cwd;
   const showBranch = !hide.has('branch') && !!input.cwd;
   const branch = showBranch ? getGitBranch(input.cwd!) : null;
+  const worktree = !hide.has('worktree') ? (input.workspace?.git_worktree ?? null) : null;
 
-  // Line 1: cwd/branch + extras
   const line1Parts: string[] = [];
+  let locPart = '';
   if (showCwd) {
-    let cwdPart = CWD_COLOR() + shortenCwd(input.cwd!) + RST;
-    if (branch) cwdPart += ' → ' + BRANCH_COLOR() + branch + RST;
-    line1Parts.push(cwdPart);
+    locPart = CWD_COLOR() + shortenCwd(input.cwd!) + RST;
+    if (branch) locPart += ' → ' + BRANCH_COLOR() + branch + RST;
   } else if (branch) {
-    line1Parts.push(BRANCH_COLOR() + branch + RST);
+    locPart = BRANCH_COLOR() + branch + RST;
   }
+  if (worktree) {
+    const wt = WORKTREE_COLOR() + '⑂' + worktree + RST;
+    locPart = locPart ? locPart + ' ' + wt : wt;
+  }
+  if (locPart) line1Parts.push(locPart);
   line1Parts.push(...buildExtras(input, hide, sep));
 
-  // Line 2: model + bars
   const line2Parts: string[] = [];
-  if (!hide.has('model') && input.model?.display_name) {
-    line2Parts.push(MODEL_COLOR() + input.model.display_name + RST);
+  const showModel = !hide.has('model') && !!input.model?.display_name;
+  const showEffort = !hide.has('effort') && !!input.effort?.level;
+  if (showModel || showEffort) {
+    let modelPart = showModel ? MODEL_COLOR() + input.model!.display_name + RST : '';
+    if (showEffort) {
+      const eff = EFFORT_COLOR() + input.effort!.level + RST;
+      modelPart = modelPart ? modelPart + ' ' + eff : eff;
+    }
+    line2Parts.push(modelPart);
   }
   line2Parts.push(...buildBarParts(style, usage));
 
@@ -136,8 +147,10 @@ export function buildJSONOutput(input: StatuslineInput, hide: Set<HiddenField> =
 
   return {
     model: !hide.has('model') ? (input.model?.display_name ?? null) : null,
+    effort: !hide.has('effort') ? (input.effort?.level ?? null) : null,
     cwd: !hide.has('cwd') ? (input.cwd ?? null) : null,
     git_branch: branch,
+    git_worktree: !hide.has('worktree') ? (input.workspace?.git_worktree ?? null) : null,
     session: {
       utilization_pct: sesPct,
       resets_at: null,

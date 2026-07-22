@@ -1,6 +1,6 @@
 {
   "name": "@robmorris/claude-usage-line",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Cross-platform Claude Code statusline showing session, 5h, and 7d rate limits",
   "author": "Rob Morris",
   "license": "MIT",
@@ -22,6 +22,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "test": "npm run build && node test/cli.test.mjs",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
