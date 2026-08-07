@@ -70,14 +70,34 @@ export function runSetup(args: string[] = []): void {
     );
   }
 
+  // Only a missing file may be treated as a fresh install. Anything else
+  // (unreadable file, invalid JSON, non-object JSON) must abort: atomicWrite
+  // replaces the whole file, so proceeding would destroy the user's settings.
   let settings: Record<string, unknown> = {};
+  let rawSettings: string | null = null;
   try {
-    settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-    if (typeof settings !== 'object' || settings === null || Array.isArray(settings)) {
-      settings = {};
+    rawSettings = readFileSync(settingsPath, 'utf-8');
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+      process.stderr.write('Error: could not read ' + settingsPath + ': ' + (e as Error).message + '\n');
+      process.exit(1);
     }
-  } catch {
-    // file doesn't exist or invalid JSON
+  }
+  if (rawSettings !== null) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawSettings);
+    } catch {
+      parsed = undefined;
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      process.stderr.write(
+        'Error: ' + settingsPath + ' exists but is not a valid JSON object.\n' +
+        'Refusing to overwrite it — fix or remove the file, then re-run setup.\n'
+      );
+      process.exit(1);
+    }
+    settings = parsed as Record<string, unknown>;
   }
 
   const statusLine = settings.statusLine as Record<string, unknown> | undefined;

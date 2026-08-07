@@ -211,3 +211,17 @@ test('setup: --theme replaces carried-over theme flag but keeps other flags', ()
     `${OWN_COMMAND} --hide cost --theme dark-contrast`
   );
 });
+
+test('setup: refuses to overwrite corrupt settings.json', () => {
+  const corrupt = '{ this is not json';
+  const { result, raw } = runSetup([], corrupt);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /not a valid JSON object/);
+  assert.equal(raw, corrupt);
+});
+
+test('setup: refuses to overwrite non-object settings.json', () => {
+  const { result, raw } = runSetup([], '["not", "an", "object"]');
+  assert.equal(result.status, 1);
+  assert.equal(raw, '["not", "an", "object"]');
+});
