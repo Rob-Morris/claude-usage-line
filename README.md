@@ -32,22 +32,25 @@ Cx █████░░░ 62% • 5h ████░░░░ 48% ⟳3h28m •
 ## Quick Start
 
 ```bash
-npx @robmorris/claude-usage-line setup
+npm install -g @robmorris/claude-usage-line
+claude-usage-line setup
 ```
 
 With a theme:
 
 ```bash
-npx @robmorris/claude-usage-line setup --theme dark-contrast
+claude-usage-line setup --theme dark-contrast
 ```
 
-Or manually add to `~/.claude/settings.json`:
+Setup writes a direct `"<node>" "<path-to-cli.js>"` command into `~/.claude/settings.json`, so each statusline refresh costs a single Node process.
+
+Or manually add to `~/.claude/settings.json` (requires the global install above):
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "npx @robmorris/claude-usage-line"
+    "command": "claude-usage-line"
   }
 }
 ```
@@ -58,12 +61,18 @@ With a theme and custom bar style:
 {
   "statusLine": {
     "type": "command",
-    "command": "npx @robmorris/claude-usage-line --theme dark-contrast --style dot"
+    "command": "claude-usage-line --theme dark-contrast --style dot"
   }
 }
 ```
 
 Restart Claude Code and the statusline appears. Setup also copies an editable theme file to `~/.claude/statusline-theme.json`.
+
+> [!WARNING]
+> **Don't use `npx` as the statusline command.** Claude Code re-runs the statusline command on every update — as often as every 300 ms — and `npx` boots the entire npm CLI (and can hit the npm registry) on each run, which can pin a CPU core. Earlier versions of this README recommended `npx` here; if your settings still use it, re-run `claude-usage-line setup` and it will migrate your command (keeping any flags) automatically.
+
+> [!NOTE]
+> Setup writes absolute paths, so the command is pinned to the Node version it was set up with. If the statusline goes blank after upgrading or removing a Node version (common with nvm), re-run `claude-usage-line setup`. The same applies if you ran setup via `npx` without installing globally: the recorded path lives in npm's cache, which npm can evict — setup warns when run that way.
 
 ## How It Works
 
@@ -147,7 +156,7 @@ Select a shipped theme:
 {
   "statusLine": {
     "type": "command",
-    "command": "npx @robmorris/claude-usage-line --theme dark-contrast"
+    "command": "claude-usage-line --theme dark-contrast"
   }
 }
 ```
@@ -155,7 +164,7 @@ Select a shipped theme:
 Or set it up automatically:
 
 ```bash
-npx @robmorris/claude-usage-line setup --theme dark-contrast
+claude-usage-line setup --theme dark-contrast
 ```
 
 ### User theme file
@@ -223,7 +232,7 @@ styles.ts defaults → --theme file → ~/.claude/statusline-theme.json → --st
 ## JSON Output
 
 ```bash
-echo '{"context_window":{"used_percentage":62}}' | npx @robmorris/claude-usage-line --json
+echo '{"context_window":{"used_percentage":62}}' | claude-usage-line --json
 ```
 
 ```json
@@ -270,7 +279,7 @@ Hide parts of the output using `--hide` or the `hide` key in your theme file:
 {
   "statusLine": {
     "type": "command",
-    "command": "npx @robmorris/claude-usage-line --hide cost,duration"
+    "command": "claude-usage-line --hide cost,duration"
   }
 }
 ```
